@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/month_time_settings"
+            android:orderInCategory="100"
+            android:title="@string/month_stats"
+            app:showAsAction="always" />
+
+        <item
+            android:id="@+id/user_time_settings"
+            android:orderInCategory="100"
+            android:title="@string/free_stats"
+            app:showAsAction="always" />
+
+        <item
+            android:id="@+id/all_time_settings"
+            android:orderInCategory="100"
+            android:title="@string/all_time_stats"
+            app:showAsAction="always" />
+
+        <item
+            android:id="@+id/statistic_settings"
+            android:orderInCategory="100"
+            android:title="@string/interval_stats"
+            app:showAsAction="always" />
+    </group>
+
+</menu>
