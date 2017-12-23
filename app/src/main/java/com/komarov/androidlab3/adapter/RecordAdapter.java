@@ -26,15 +26,15 @@ public class RecordAdapter extends BaseAdapter {
     private List<Record> data;
     private LayoutInflater inflater;
     private Context ctx;
-    private int layResId;
-    private DateFormat dfISO;
+    private int resource;
+    private DateFormat date;
 
     public RecordAdapter(Context context, int resource, List<Record> objects) {
         this.ctx = context;
-        this.layResId = resource;
+        this.resource = resource;
         this.data = objects;
         this.inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        this.dfISO = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        this.date = new SimpleDateFormat("dd.MM.yyyy HH:mm");
     }
 
     @Override
@@ -54,22 +54,22 @@ public class RecordAdapter extends BaseAdapter {
 
     @Override
     public View getView(int i, View view, ViewGroup viewGroup) {
-        View row = inflater.inflate(layResId, viewGroup, false);
+        View row = inflater.inflate(resource, viewGroup, false);
         Record record = (Record) getItem(i);
 
-        TextView recordDesc = row.findViewById(R.id.record_row_desc);
+        TextView recordDesc = row.findViewById(R.id.record_row_title);
         recordDesc.setText(String.format("%s%s", recordDesc.getText(), record.getDesc()));
 
-        TextView startDate = row.findViewById(R.id.record_row_begin);
+        TextView startDate = row.findViewById(R.id.record_row_start);
         Date date = new Date(record.getBegin());
-        startDate.setText(String.format("%s%s", startDate.getText(), dfISO.format(date)));
+        startDate.setText(String.format("%s%s", startDate.getText(), this.date.format(date)));
 
-        TextView recordCategory = row.findViewById(R.id.record_row_cat);
+        TextView recordCategory = row.findViewById(R.id.record_row_category);
         recordCategory.setText(String.format("%s%s", recordCategory.getText(), record.getCategoryTitle()));
 
         TextView endTime = row.findViewById(R.id.record_row_end);
         date = new Date(record.getEnd());
-        endTime.setText(String.format("%s%s", endTime.getText(), dfISO.format(date)));
+        endTime.setText(String.format("%s%s", endTime.getText(), this.date.format(date)));
 
         TextView segment = row.findViewById(R.id.record_row_interval);
         segment.setText(String.format("%s%s", segment.getText(), String.valueOf(record.getInterval())));

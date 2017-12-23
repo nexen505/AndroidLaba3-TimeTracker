@@ -30,7 +30,7 @@
     <string name="month_stats">Месяц</string>
     <string name="free_stats">Произвольно</string>
     <string name="all_time_stats">Все время</string>
-    <string name="interval_stats">Интервал</string>
+    <string name="interval_stats">Самые частые занятия</string>
     <string name="start_date">Дата начала</string>
     <string name="end_date">Дата окончания</string>
     <string name="add">Добавить</string>
@@ -38,4 +38,8 @@
     <string name="button_cancel">Отмена</string>
     <string name="confirm_deletion">Подтвердите удаление</string>
     <string name="confirm_deletion_msg">Вы уверены, что хотите удалить отметку?</string>
+    <string name="time_tracker_app">Отметки времени</string>
+    <string name="often_categories">Самые частые занятия</string>
+    <string name="summary_categories_time">Суммарное время по категориям</string>
+    <string name="pie_title">Круговая диаграмма</string>
 </resources>

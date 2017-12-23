@@ -1,7 +1,6 @@
 package com.komarov.androidlab3;
 
 import android.app.AlertDialog;
-import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -23,22 +22,18 @@ import com.komarov.androidlab3.database.DomainDbUtils;
 import com.komarov.androidlab3.domain.Category;
 import com.komarov.androidlab3.domain.Record;
 import com.komarov.androidlab3.domain.StatsInfo;
+import com.komarov.androidlab3.utils.Utils;
 
-import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class StatsActivity extends AppCompatActivity {
@@ -50,7 +45,7 @@ public class StatsActivity extends AppCompatActivity {
     private PieChart mPieChart;
     public static final String SELECTED_ITEMS_KEY = "SELECT_ITEM";
 
-    private ArrayAdapter<Object> adapter;
+    private ArrayAdapter<String> adapter;
     private List<Category> allCategories = new ArrayList<>();
 
     private DateFormat mDayFormat = new SimpleDateFormat("dd"),
@@ -70,75 +65,88 @@ public class StatsActivity extends AppCompatActivity {
         utils = new DomainDbUtils(this);
         database = utils.getWritableDatabase();
 
-        mRecordsListView = findViewById(R.id.listView);
-        mPieChart = findViewById(R.id.pie);
-        mPieChart.getBackgroundPaint().setColor(Color.WHITE);
+        mRecordsListView = findViewById(R.id.categoriesListView);
 
         allCategories = utils.getAllCategories(database);
-        viewList();
-        drawPie();
-
+        showCategories(allCategories);
+        initializeAllStats(allCategories);
     }
 
-    public void viewList() {
+    private void initializeAllStats(List<Category> categories) {
+        showSummaryCategoriesTime(categories.parallelStream().map(Category::getTitle).collect(Collectors.toList()));
+        viewOftenCategoriesList();
+    }
+
+    private void showSummaryCategoriesTime(List<String> categories) {
+        List<String> result;
+//        List<String> categories = (List<String>) getIntent().getSerializableExtra(StatsActivity.SELECTED_ITEMS_KEY);
+        if (categories == null || categories.isEmpty()) {
+            result = allCategories.stream()
+                    .map(category -> String.format("%s: %s минут", category.getTitle(), String.valueOf(utils.getStatsTimeForCategory(database, category))))
+                    .collect(Collectors.toList());
+        } else {
+            result = allCategories.parallelStream()
+                    .flatMap(category ->
+                            categories.parallelStream()
+                                    .filter(s -> Objects.equals(s, category.getTitle()))
+                                    .map(s -> String.format("%s: %s минут", category.getTitle(), String.valueOf(utils.getStatsTimeForCategory(database, category)))))
+                    .collect(Collectors.toList());
+
+        }
+        ListView mList = findViewById(R.id.categoryTimeList);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, result);
+        mList.setAdapter(adapter);
+    }
+
+    public void showCategories(List<Category> categories) {
+        if (categories == null || categories.isEmpty()) return;
+        List<String> titles = categories.parallelStream().map(Category::getTitle).collect(Collectors.toList());
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_multiple_choice, titles);
+        mRecordsListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+        mRecordsListView.setAdapter(adapter);
+    }
+
+
+    public void viewOftenCategoriesList() {
         List<Record> records = utils.getRecords(database);
         Map<String, Integer> mapCount = new HashMap<>();
 
-        Object[] title;
-
         for (Record r : records) {
-            int interval = Integer.parseInt(String.valueOf(r.getInterval()));
-
-            int beginDay = Integer.parseInt(mDayFormat.format(new Date(r.getBegin())));
             int beginMonth = Integer.parseInt(mMonthFormat.format(new Date(r.getBegin())));
             int beginYear = Integer.parseInt(mYearFormat.format(new Date(r.getBegin())));
 
-            int endDay = Integer.parseInt(mDayFormat.format(new Date(r.getEnd())));
             int endMonth = Integer.parseInt(mMonthFormat.format(new Date(r.getEnd())));
             int endYear = Integer.parseInt(mYearFormat.format(new Date(r.getEnd())));
 
             if (isMonthTimeFlag &&
                     beginMonth == mBeginMonth && mBeginYear == beginYear &&
                     mEndMonth == endMonth && mEndYear == endYear) {
-                mapCount.merge(r.getCategoryTitle(), interval, (a, b) -> a + b);
+                mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b);
             }
 
             if (isUserTimeFlag &&
                     mBeginMonth <= beginMonth && mBeginYear <= beginYear &&
                     endMonth <= mEndMonth && endYear <= mEndYear) {
-                mapCount.merge(r.getCategoryTitle(), interval, (a, b) -> a + b);
+                mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b);
             }
 
             if (isAllTimeFlag) {
-                mapCount.merge(r.getCategoryTitle(), interval, (a, b) -> a + b);
+                mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b);
             }
 
         }
 
-        mapCount = sortByValue(mapCount);
-        title = mapCount.keySet().toArray();
+        mapCount = Utils.sortByValue(mapCount);
+        List<String> titles = mapCount.entrySet().parallelStream()
+                .map(stringIntegerEntry -> String.format("%s: %s", stringIntegerEntry.getKey(), String.valueOf(stringIntegerEntry.getValue())))
+                .collect(Collectors.toList());
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_multiple_choice, title);
-        mRecordsListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
-        mRecordsListView.setAdapter(adapter);
+        ListView mList = findViewById(R.id.categoryOftenList);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, titles);
+        mList.setAdapter(adapter);
     }
 
-    private Map<String, Integer> sortByValue(Map<String, Integer> unsortMap) {
-
-        List<Map.Entry<String, Integer>> list =
-                new LinkedList<>(unsortMap.entrySet());
-
-        list.sort(Comparator.comparing(o -> (o.getValue())));
-        Collections.reverse(list);
-        Map<String, Integer> sortedMap = new LinkedHashMap<>();
-        for (Map.Entry<String, Integer> entry : list) {
-            sortedMap.put(entry.getKey(), entry.getValue());
-        }
-
-        return sortedMap;
-    }
-
-    private void drawPie() {
+    private void drawPie(List<Category> allCategories) {
         Random random = new Random();
         List<StatsInfo> times = allCategories.parallelStream()
                 .map(category -> new StatsInfo(category.getTitle(), utils.getStatsTimeForCategory(database, category)))
@@ -155,16 +163,13 @@ public class StatsActivity extends AppCompatActivity {
 
     public void showStatisticRecord() {
         SparseBooleanArray mCheckedPosition = mRecordsListView.getCheckedItemPositions();
-        List<String> selectItem = new ArrayList<>();
+        List<String> selected = new ArrayList<>();
         for (int i = 0; i < mCheckedPosition.size(); i++) {
             int position = mCheckedPosition.keyAt(i);
             if (mCheckedPosition.valueAt(i))
-                selectItem.add((String) adapter.getItem(position));
+                selected.add(adapter.getItem(position));
         }
-
-        Intent intent = new Intent(StatsActivity.this, StatActivity.class);
-        intent.putExtra(SELECTED_ITEMS_KEY, (Serializable) selectItem);
-        startActivity(intent);
+        showSummaryCategoriesTime(selected);
     }
 
     @Override
@@ -187,13 +192,13 @@ public class StatsActivity extends AppCompatActivity {
             isAllTimeFlag = false;
             mBeginMonth = mEndMonth = Integer.parseInt(mMonthFormat.format(new Date()));
             mBeginYear = mEndYear = Integer.parseInt(mYearFormat.format(new Date()));
-            viewList();
+            viewOftenCategoriesList();
         }
         if (id == R.id.all_time_settings) {
             isMonthTimeFlag = false;
             isUserTimeFlag = false;
             isAllTimeFlag = true;
-            viewList();
+            viewOftenCategoriesList();
         }
         if (id == R.id.user_time_settings) {
             isMonthTimeFlag = false;
@@ -201,8 +206,27 @@ public class StatsActivity extends AppCompatActivity {
             isAllTimeFlag = false;
             onClickDatePicker();
         }
+        if (id == R.id.pie_stats) {
+            onClickShowPie();
+        }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void onClickShowPie() {
+        LayoutInflater layoutInflater = LayoutInflater.from(StatsActivity.this);
+        final View promptView = layoutInflater.inflate(R.layout.pie_layout, null);
+        mPieChart = promptView.findViewById(R.id.pie);
+        mPieChart.getBackgroundPaint().setColor(Color.WHITE);
+        drawPie(allCategories);
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(StatsActivity.this);
+        alertDialogBuilder.setTitle(R.string.pie_title);
+        alertDialogBuilder.setView(promptView);
+        alertDialogBuilder.setCancelable(false)
+                .setNegativeButton("Ok",
+                        (dialogInterface, i) -> dialogInterface.cancel());
+        AlertDialog alert = alertDialogBuilder.create();
+        alert.show();
     }
 
     private void onClickDatePicker() {
@@ -237,7 +261,7 @@ public class StatsActivity extends AppCompatActivity {
                                 e.printStackTrace();
                             }
 
-                            viewList();
+                            viewOftenCategoriesList();
                             dialog.cancel();
                         })
                 .setNegativeButton("Cancel",

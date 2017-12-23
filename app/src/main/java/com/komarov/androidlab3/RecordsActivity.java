@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -19,7 +20,6 @@ import java.util.List;
 
 public class RecordsActivity extends AppCompatActivity {
 
-    private ListView mListRecord;
     private SQLiteDatabase database;
     private DomainDbUtils utils;
     private List<Record> allRecords = new ArrayList<>();
@@ -31,13 +31,14 @@ public class RecordsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_records);
-        setTitle("Отметки времени");
+        setTitle(getString(R.string.time_tracker_app));
 
-        mListRecord = findViewById(R.id.record_list_view);
         utils = new DomainDbUtils(this);
         database = utils.getWritableDatabase();
+
         allRecords = utils.getRecords(database);
         adapter = new RecordAdapter(this, R.layout.content_record_row, allRecords);
+        ListView mListRecord = findViewById(R.id.record_list_view);
         mListRecord.setAdapter(adapter);
         mListRecord.setOnItemClickListener((adapterView, view, i, l) -> {
             if (selectedView != null)

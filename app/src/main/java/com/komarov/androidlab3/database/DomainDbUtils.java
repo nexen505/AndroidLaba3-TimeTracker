@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import com.komarov.androidlab3.domain.Category;
 import com.komarov.androidlab3.domain.Photo;
 import com.komarov.androidlab3.domain.Record;
+import com.komarov.androidlab3.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -78,7 +79,7 @@ public class DomainDbUtils extends DbUtils {
             int photoIdx = cursor.getColumnIndex(DbUtils.IMAGE);
             do {
                 int idCat = cursor.getInt(idIdx);
-                Bitmap bmp = BitmapUtils.getImage(cursor.getBlob(photoIdx));
+                Bitmap bmp = Utils.getImage(cursor.getBlob(photoIdx));
                 photo = new Photo(idCat, bmp);
             } while (cursor.moveToNext());
             cursor.close();
@@ -152,7 +153,7 @@ public class DomainDbUtils extends DbUtils {
     }
 
     public void insertCameraImage(SQLiteDatabase database, Bitmap bitmap) {
-        byte[] image = BitmapUtils.getBytes(bitmap);
+        byte[] image = Utils.getBytes(bitmap);
         ContentValues contentValues = new ContentValues();
         contentValues.put(IMAGE, image);
         insert(database, contentValues, PHOTO_TABLE);
@@ -166,7 +167,7 @@ public class DomainDbUtils extends DbUtils {
             int imageIdx = cursor.getColumnIndex(IMAGE);
             do {
                 int id = cursor.getInt(idIdx);
-                final Bitmap bitmap = BitmapUtils.getImage(cursor.getBlob(imageIdx));
+                final Bitmap bitmap = Utils.getImage(cursor.getBlob(imageIdx));
                 final Photo photo = new Photo(id, bitmap);
                 res.add(photo);
             } while (cursor.moveToNext());
@@ -191,7 +192,7 @@ public class DomainDbUtils extends DbUtils {
         return listCategories;
     }
 
-    public int getStatsTimeForCategory(SQLiteDatabase database, Category category) {
+    public Long getStatsTimeForCategory(SQLiteDatabase database, Category category) {
         String sql = String.format("select sum(%s) from %s where %s=?", TIME_SEGMENT, RECORD_TABLE, CATEGORY_ID_REF),
                 str = "";
         Cursor cursor = database.rawQuery(sql, new String[]{String.valueOf(category.getId())}, null);
@@ -202,7 +203,21 @@ public class DomainDbUtils extends DbUtils {
             } while (cursor.moveToNext());
             cursor.close();
         }
-        return str != null ? Integer.valueOf(str) : 0;
+        return str != null ? Long.valueOf(str) : 0;
+    }
+
+    public Long getStatsTimeForCategory(SQLiteDatabase database, Category category, Long startDate, Long endDate) {
+        String sql = String.format("select sum(%s) from %s where %s=? and %s>=? and %s<=?", TIME_SEGMENT, RECORD_TABLE, CATEGORY_ID_REF, START_TIME, END_TIME),
+                str = "";
+        Cursor cursor = database.rawQuery(sql, new String[]{String.valueOf(category.getId()), String.valueOf(startDate), String.valueOf(endDate)}, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                for (String cn : cursor.getColumnNames())
+                    str = cursor.getString(cursor.getColumnIndex(cn));
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+        return str != null ? Long.valueOf(str) : 0;
     }
 
     public void deleteCascadeCategory(SQLiteDatabase database, Category category) {
