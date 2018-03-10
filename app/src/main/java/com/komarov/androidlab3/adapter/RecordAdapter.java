@@ -12,6 +12,7 @@ import android.widget.TextView;
 import com.komarov.androidlab3.R;
 import com.komarov.androidlab3.domain.Photo;
 import com.komarov.androidlab3.domain.Record;
+import com.komarov.androidlab3.utils.StringDateTime;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -34,7 +35,7 @@ public class RecordAdapter extends BaseAdapter {
         this.resource = resource;
         this.data = objects;
         this.inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        this.date = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+        this.date = new SimpleDateFormat(StringDateTime.DATE_TIME_PATTERN);
     }
 
     @Override
@@ -72,7 +73,7 @@ public class RecordAdapter extends BaseAdapter {
         endTime.setText(String.format("%s%s", endTime.getText(), this.date.format(date)));
 
         TextView segment = row.findViewById(R.id.record_row_interval);
-        segment.setText(String.format("%s%s", segment.getText(), String.valueOf(record.getInterval())));
+        segment.setText(String.format("%s%s минут", segment.getText(), String.valueOf((int) (record.getInterval() / 1000 / 60))));
 
         LinearLayout linearLayout = row.findViewById(R.id.photos_layout);
         final List<Photo> photos = record.getPhotos().stream().filter(Objects::nonNull).collect(Collectors.toList());

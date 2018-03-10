@@ -74,7 +74,7 @@ public class StatsActivity extends AppCompatActivity {
 
     private void initializeAllStats(List<Category> categories) {
         showSummaryCategoriesTime(categories.parallelStream().map(Category::getTitle).collect(Collectors.toList()));
-        viewOftenCategoriesList();
+        viewOftenCategoriesList(getFilteredRecords());
     }
 
     private void showSummaryCategoriesTime(List<String> categories) {
@@ -89,7 +89,10 @@ public class StatsActivity extends AppCompatActivity {
                     .flatMap(category ->
                             categories.parallelStream()
                                     .filter(s -> Objects.equals(s, category.getTitle()))
-                                    .map(s -> String.format("%s: %s минут", category.getTitle(), String.valueOf(utils.getStatsTimeForCategory(database, category)))))
+                                    .map(s -> {
+                                        final Long minutes = utils.getStatsTimeForCategory(database, category) / 1000 / 60;
+                                        return String.format("%s: %s ч %s минут", category.getTitle(), String.valueOf(minutes / 60), String.valueOf(minutes % 60));
+                                    }))
                     .collect(Collectors.toList());
 
         }
@@ -106,39 +109,38 @@ public class StatsActivity extends AppCompatActivity {
         mRecordsListView.setAdapter(adapter);
     }
 
-
-    public void viewOftenCategoriesList() {
-        List<Record> records = utils.getRecords(database);
-        Map<String, Integer> mapCount = new HashMap<>();
-
+    public List<Record> getFilteredRecords() {
+        List<Record> records = utils.getRecords(database), filtered = new ArrayList<>();
         for (Record r : records) {
+            int beginDay = Integer.parseInt(mMonthFormat.format(new Date(r.getBegin())));
             int beginMonth = Integer.parseInt(mMonthFormat.format(new Date(r.getBegin())));
             int beginYear = Integer.parseInt(mYearFormat.format(new Date(r.getBegin())));
 
+            int endDay = Integer.parseInt(mMonthFormat.format(new Date(r.getEnd())));
             int endMonth = Integer.parseInt(mMonthFormat.format(new Date(r.getEnd())));
             int endYear = Integer.parseInt(mYearFormat.format(new Date(r.getEnd())));
 
             if (isMonthTimeFlag &&
                     beginMonth == mBeginMonth && mBeginYear == beginYear &&
                     mEndMonth == endMonth && mEndYear == endYear) {
-                mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b);
+                filtered.add(r);
+            } else if (isUserTimeFlag &&
+                    mBeginDay <= beginDay && mBeginMonth <= beginMonth && mBeginYear <= beginYear &&
+                    endDay <= mEndDay && endMonth <= mEndMonth && endYear <= mEndYear) {
+                filtered.add(r);
+            } else if (isAllTimeFlag) {
+                filtered.add(r);
             }
-
-            if (isUserTimeFlag &&
-                    mBeginMonth <= beginMonth && mBeginYear <= beginYear &&
-                    endMonth <= mEndMonth && endYear <= mEndYear) {
-                mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b);
-            }
-
-            if (isAllTimeFlag) {
-                mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b);
-            }
-
         }
+        return filtered;
+    }
 
-        mapCount = Utils.sortByValue(mapCount);
-        List<String> titles = mapCount.entrySet().parallelStream()
-                .map(stringIntegerEntry -> String.format("%s: %s", stringIntegerEntry.getKey(), String.valueOf(stringIntegerEntry.getValue())))
+    public void viewOftenCategoriesList(final List<Record> records) {
+        final Map<String, Integer> mapCount = new HashMap<>(), sorted;
+        records.forEach(r -> mapCount.merge(r.getCategoryTitle(), 1, (a, b) -> a + b));
+        sorted = Utils.sortByValue(mapCount);
+        List<String> titles = sorted.entrySet().parallelStream()
+                .map(stringIntegerEntry -> String.format("%s: %s", stringIntegerEntry.getKey(), stringIntegerEntry.getValue()))
                 .collect(Collectors.toList());
 
         ListView mList = findViewById(R.id.categoryOftenList);
@@ -146,11 +148,18 @@ public class StatsActivity extends AppCompatActivity {
         mList.setAdapter(adapter);
     }
 
-    private void drawPie(List<Category> allCategories) {
+    private void drawPieByRecords(final List<Record> records) {
+        Map<String, List<Record>> m = records.parallelStream().collect(Collectors.groupingBy(Record::getCategoryTitle));
+        List<StatsInfo> times = m.entrySet().parallelStream().map(stringListEntry -> {
+            final List<Long> intervals = stringListEntry.getValue().parallelStream().map(Record::getInterval).collect(Collectors.toList());
+            final Long statsTimeForCategory = intervals.parallelStream().reduce(intervals.get(0), (aLong, aLong2) -> aLong + aLong2);
+            return new StatsInfo(stringListEntry.getKey(), statsTimeForCategory);
+        }).collect(Collectors.toList());
+        drawPieByStatsInfo(times);
+    }
+
+    private void drawPieByStatsInfo(List<StatsInfo> times) {
         Random random = new Random();
-        List<StatsInfo> times = allCategories.parallelStream()
-                .map(category -> new StatsInfo(category.getTitle(), utils.getStatsTimeForCategory(database, category)))
-                .collect(Collectors.toList());
         times.parallelStream()
                 .filter(statsInfo -> statsInfo.getTime() != 0)
                 .map(statsInfo -> new Segment(statsInfo.getCategory(), statsInfo.getTime()))
@@ -159,6 +168,13 @@ public class StatsActivity extends AppCompatActivity {
                 });
         PieRenderer pieRenderer = mPieChart.getRenderer(PieRenderer.class);
         pieRenderer.setDonutSize((float) 0 / 100, PieRenderer.DonutMode.PERCENT);
+    }
+
+    private void drawPie(List<Category> allCategories) {
+        List<StatsInfo> times = allCategories.parallelStream()
+                .map(category -> new StatsInfo(category.getTitle(), utils.getStatsTimeForCategory(database, category)))
+                .collect(Collectors.toList());
+        drawPieByStatsInfo(times);
     }
 
     public void showStatisticRecord() {
@@ -192,13 +208,13 @@ public class StatsActivity extends AppCompatActivity {
             isAllTimeFlag = false;
             mBeginMonth = mEndMonth = Integer.parseInt(mMonthFormat.format(new Date()));
             mBeginYear = mEndYear = Integer.parseInt(mYearFormat.format(new Date()));
-            viewOftenCategoriesList();
+            viewOftenCategoriesList(getFilteredRecords());
         }
         if (id == R.id.all_time_settings) {
             isMonthTimeFlag = false;
             isUserTimeFlag = false;
             isAllTimeFlag = true;
-            viewOftenCategoriesList();
+            viewOftenCategoriesList(getFilteredRecords());
         }
         if (id == R.id.user_time_settings) {
             isMonthTimeFlag = false;
@@ -218,7 +234,7 @@ public class StatsActivity extends AppCompatActivity {
         final View promptView = layoutInflater.inflate(R.layout.pie_layout, null);
         mPieChart = promptView.findViewById(R.id.pie);
         mPieChart.getBackgroundPaint().setColor(Color.WHITE);
-        drawPie(allCategories);
+        drawPieByRecords(getFilteredRecords());
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(StatsActivity.this);
         alertDialogBuilder.setTitle(R.string.pie_title);
         alertDialogBuilder.setView(promptView);
@@ -261,7 +277,7 @@ public class StatsActivity extends AppCompatActivity {
                                 e.printStackTrace();
                             }
 
-                            viewOftenCategoriesList();
+                            viewOftenCategoriesList(getFilteredRecords());
                             dialog.cancel();
                         })
                 .setNegativeButton("Cancel",

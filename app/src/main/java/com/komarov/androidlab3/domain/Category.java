@@ -19,8 +19,12 @@ public class Category implements Serializable
         this.photo = photo;
     }
 
+    public Category(String title, Photo photo) {
+        this(null, title, photo);
+    }
+
     public Category(String title) {
-        this.title = title;
+        this(null, title, null);
     }
 
     public Integer getId() {

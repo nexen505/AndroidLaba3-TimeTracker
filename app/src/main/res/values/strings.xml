@@ -18,7 +18,7 @@
     <string name="category">"Категория: "</string>
     <string name="description">"Описание: "</string>
     <string name="start_time">"Время начала: "</string>
-    <string name="end_time">"Время конца: "</string>
+    <string name="end_time">"Время окончания: "</string>
     <string name="interval">"Интервал: "</string>
     <string name="photo">"Фото: "</string>
     <string name="choose_time">Выберите время</string>

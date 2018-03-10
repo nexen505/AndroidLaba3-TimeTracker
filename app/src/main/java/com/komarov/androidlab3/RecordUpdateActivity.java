@@ -22,11 +22,9 @@ import com.komarov.androidlab3.domain.Record;
 import com.komarov.androidlab3.utils.StringDateTime;
 import com.komarov.androidlab3.utils.Utils;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 public class RecordUpdateActivity extends AppCompatActivity {
@@ -53,13 +51,6 @@ public class RecordUpdateActivity extends AppCompatActivity {
 
     private long begin;
     private long end;
-
-    private enum SelectedDateEnum {
-        START, END
-    }
-
-    private SelectedDateEnum flag;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,7 +100,7 @@ public class RecordUpdateActivity extends AppCompatActivity {
 
         allPhoto = dbUtils.getAllPhoto(database);
         Spinner mPhotoSpinner = findViewById(R.id.photoSpinner);
-        if (allPhoto.size()> 0) {
+        if (allPhoto.size() > 0) {
             CustomPhotoAdapter customPhotoAdapter = new CustomPhotoAdapter(RecordUpdateActivity.this, R.layout.content_photo, allPhoto);
             mPhotoSpinner.setAdapter(customPhotoAdapter);
             mPhotoSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -291,57 +282,13 @@ public class RecordUpdateActivity extends AppCompatActivity {
     }
 
     public long getInterval(long begin, long end) {
-        SimpleDateFormat sH = new SimpleDateFormat("HH");
-        SimpleDateFormat sM = new SimpleDateFormat("mm");
-        SimpleDateFormat sMM = new SimpleDateFormat("MM");
-        SimpleDateFormat sD = new SimpleDateFormat("dd");
-        SimpleDateFormat sY = new SimpleDateFormat("yyyy");
-
-
-        Date dBegin = new Date(begin);
-        Date dEnd = new Date(end);
-
-        String beginH = sH.format(dBegin);
-        String endH = sH.format(dEnd);
-        String beginM = sM.format(dBegin);
-        String endM = sM.format(dEnd);
-        String beginMM = sMM.format(dBegin);
-        String endMM = sMM.format(dEnd);
-        String beginD = sD.format(dBegin);
-        String endD = sD.format(dEnd);
-        String beginY = sY.format(dBegin);
-        String endY = sY.format(dEnd);
-
-        long yy = Integer.parseInt(endY) - Integer.parseInt(beginY);
-        if (yy < 0) {
+        long diff = end - begin;
+        if (diff < 0) {
             Toast toast = Toast.makeText(this, R.string.incorrect_time, Toast.LENGTH_LONG);
             toast.show();
+            return 0;
         }
+        return diff;
 
-        long mM = Integer.parseInt(endMM) - Integer.parseInt(beginMM);
-        if (mM < 0 && yy == 0) {
-            Toast toast = Toast.makeText(this, R.string.incorrect_time, Toast.LENGTH_LONG);
-            toast.show();
-        }
-
-        long dd = Integer.parseInt(endD) - Integer.parseInt(beginD);
-        if (dd < 0 && mM == 0 && yy == 0) {
-            Toast toast = Toast.makeText(this, R.string.incorrect_time, Toast.LENGTH_LONG);
-            toast.show();
-        }
-
-        int h = Integer.parseInt(endH) - Integer.parseInt(beginH);
-        if (h < 0 && dd == 0 && mM == 0 && yy == 0) {
-            Toast toast = Toast.makeText(this, R.string.incorrect_time, Toast.LENGTH_LONG);
-            toast.show();
-        }
-
-        long m = Integer.parseInt(endM) - Integer.parseInt(beginM);
-        if (m < 0 && dd == 0 && mM == 0 && h == 0 && yy == 0) {
-            Toast toast = Toast.makeText(this, R.string.incorrect_time, Toast.LENGTH_LONG);
-            toast.show();
-        }
-
-        return yy * 365 * 24 * 60 + mM * 30 * 24 * 60 + dd * 24 * 60 + h * 60 + m;
     }
 }

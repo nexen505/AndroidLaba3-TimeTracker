@@ -17,6 +17,7 @@ import com.komarov.androidlab3.R;
 import com.komarov.androidlab3.RecordUpdateActivity;
 import com.komarov.androidlab3.database.DomainDbUtils;
 import com.komarov.androidlab3.domain.Category;
+import com.komarov.androidlab3.domain.Photo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +54,10 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
         });
+
+        final Photo photo = category.getPhoto();
+        if (photo != null)
+            holder.mImageView.setImageBitmap(photo.getImage());
 
         holder.mDeleteButton.setOnClickListener(v -> {
             AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(v.getContext());

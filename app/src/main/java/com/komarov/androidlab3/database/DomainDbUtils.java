@@ -87,6 +87,16 @@ public class DomainDbUtils extends DbUtils {
         return photo;
     }
 
+    private Category getCategoryById(SQLiteDatabase database, int id) {
+        Category category = null;
+        Cursor cursor = database.query(CATEGORY_TABLE, null, CATEGORY_ID + "=" + String.valueOf(id), null, null, null, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            final List<Category> categories = parseCategories(cursor);
+            category = categories.isEmpty() ? null : categories.get(0);
+        }
+        return category;
+    }
+
     private Integer getNextRecordId(SQLiteDatabase database) {
         String sqlQuery = String.format("SELECT * FROM %s WHERE %s = (SELECT MAX(%s)  FROM %s)", RECORD_TABLE, RECORD_ID, RECORD_ID, RECORD_TABLE);
         Cursor cursor = database.rawQuery(sqlQuery, null);
@@ -100,21 +110,27 @@ public class DomainDbUtils extends DbUtils {
         return idVal;
     }
 
-    public void insertRecord(SQLiteDatabase database, Record data) {
+    public void insertRecord(SQLiteDatabase database, Record record) {
         ContentValues contentValues = new ContentValues();
-        contentValues.put(DESCRIPTION, data.getDesc());
-        contentValues.put(START_TIME, data.getBegin());
-        contentValues.put(END_TIME, data.getEnd());
-        contentValues.put(TIME_SEGMENT, data.getInterval());
-        contentValues.put(CATEGORY_ID_REF, data.getCategoryRef());
+        contentValues.put(DESCRIPTION, record.getDesc());
+        contentValues.put(START_TIME, record.getBegin());
+        contentValues.put(END_TIME, record.getEnd());
+        contentValues.put(TIME_SEGMENT, record.getInterval());
+        contentValues.put(CATEGORY_ID_REF, record.getCategoryRef());
         insert(database, contentValues, DbUtils.RECORD_TABLE);
-
-        ContentValues recordPhotos = new ContentValues();
+        final ContentValues recordPhotos = new ContentValues();
         Integer id = getNextRecordId(database);
         recordPhotos.put(RECORD_ID_REF, id);
-        data.getPhotos().forEach(p -> {
+        record.getPhotos().forEach(p -> {
             recordPhotos.put(PHOTO_ID_REF, p.getId());
         });
+        Category category = getCategoryById(database, record.getCategoryRef());
+        if (category != null) {
+            Photo photo = category.getPhoto();
+            if (photo != null) {
+                recordPhotos.put(PHOTO_ID_REF, photo.getId());
+            }
+        }
         insert(database, recordPhotos, DbUtils.TIME_PHOTO_TABLE);
     }
 
@@ -134,7 +150,9 @@ public class DomainDbUtils extends DbUtils {
     }
 
     public int deleteRecordById(SQLiteDatabase database, int recordId) {
-        return delete(database, RECORD_TABLE, RECORD_ID, new String[]{String.valueOf(recordId)});
+        final String rsID = String.valueOf(recordId);
+        delete(database, TIME_PHOTO_TABLE, RECORD_ID, new String[]{rsID});
+        return delete(database, RECORD_TABLE, RECORD_ID, new String[]{rsID});
     }
 
     private String getCategoryTitleById(int id, SQLiteDatabase database) {
@@ -233,19 +251,8 @@ public class DomainDbUtils extends DbUtils {
         }
     }
 
-    public void deleteCascadePhoto(SQLiteDatabase database, Photo photo) {
-        List<Integer> removedCategoryIds = new ArrayList<>();
-        String sqlQuery = String.format("select * from %s where %s = %s", TIME_PHOTO_TABLE, PHOTO_ID_REF, String.valueOf(photo.getId()));
-        Cursor cursor = database.rawQuery(sqlQuery, null, null);
+    public int deleteCascadePhoto(SQLiteDatabase database, Photo photo) {
         delete(database, TIME_PHOTO_TABLE, PHOTO_ID_REF, new String[]{String.valueOf(photo.getId())});
-        if (cursor != null && cursor.moveToFirst()) {
-            final int catIdIdx = cursor.getColumnIndex(RECORD_ID_REF);
-            do {
-                removedCategoryIds.add(cursor.getInt(catIdIdx));
-            } while (cursor.moveToNext());
-            cursor.close();
-        }
-        removedCategoryIds.forEach(id -> deleteRecordById(database, id));
-        delete(database, DbUtils.PHOTO_TABLE, DbUtils.PHOTO_ID, new String[]{String.valueOf(photo.getId())});
+        return delete(database, PHOTO_TABLE, DbUtils.PHOTO_ID, new String[]{String.valueOf(photo.getId())});
     }
 }
